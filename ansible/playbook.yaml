@@ -1,0 +1,64 @@
+- name: Setup Task API Server
+  hosts: servers
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    # 1. Wait for cloud-init and unattended-upgrades to finish releasing the apt lock
+    - name: Wait for apt lock to be released
+      ansible.builtin.shell: |
+        while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+          sleep 5
+        done
+      changed_when: false
+      timeout: 300 # Give up after 5 minutes
+
+    # 2. Clean any potentially corrupt partial lists from initial boot
+    - name: Clean apt lists
+      ansible.builtin.file:
+        path: /var/lib/apt/lists
+        state: absent
+      changed_when: false
+
+    # 3. Update packages (Retry logic included)
+    - name: Update packages
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      retries: 3
+      delay: 10
+      until: apt_update_result is success
+      register: apt_update_result
+
+    - name: Install Docker and dependencies
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose-v2
+          - git
+          - curl
+        state: present
+        update_cache: yes # Ensure cache is fresh before install
+      retries: 2
+      delay: 5
+      until: docker_install_result is success
+      register: docker_install_result
+
+    - name: Start Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Clone repo
+      ansible.builtin.git:
+        repo: "https://github.com/priyanshu334/dev-pr1.git"
+        dest: /home/ubuntu/task-api
+        version: main
+      become_user: ubuntu
+
+    - name: Run Docker Compose
+      ansible.builtin.command: docker compose up -d --build
+      args:
+        chdir: /home/ubuntu/task-api
+      changed_when: true

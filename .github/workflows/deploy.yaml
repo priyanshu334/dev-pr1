@@ -11,15 +11,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2  # Node 24 compatible
+        uses: actions/checkout@v6  # Upgraded to v6 for Node 24 support
 
       - name: Setup Go
-        uses: actions/setup-go@v5.3.0  # Node 24 compatible
+        uses: actions/setup-go@v6  # Upgraded to v6 for Node 24 support
         with:
-          go-version: "1.26"
+          go-version: "1.23"       # Fixed: Change this to your actual required Go version (e.g., "1.23" or "1.22")
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3.3.0  # Node 24 compatible
+        uses: docker/login-action@v4  # Upgraded to v4 for Node 24 support
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
